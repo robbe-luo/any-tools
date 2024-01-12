@@ -1,5 +1,5 @@
 {
-  "name": "create-tools",
+  "name": "create-any-tools",
   "version": "0.0.0",
   "description": "create new project tools",
   "keywords": [
@@ -21,6 +21,10 @@
     "prepublish": "npm run build",
     "build": "unbuild",
     "release": "release-it"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "repository": {
     "type": "git",
