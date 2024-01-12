@@ -32,7 +32,7 @@
     "simple-git-hooks": "^2.9.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm exec lint-staged --concurrent false"
+    "pre-commit": "npm exec lint-staged --concurrent false"
   },
   "lint-staged": {
     "*": [
