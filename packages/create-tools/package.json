@@ -1,0 +1,64 @@
+{
+  "name": "create-tools",
+  "version": "0.0.0",
+  "description": "create new project tools",
+  "keywords": [
+    "new project",
+    "tools"
+  ],
+  "type": "module",
+  "author": "robbe-luo",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "bin": {
+    "create-tools": "./bin/index.js"
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "prepublish": "npm run build",
+    "build": "unbuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robbe-luo/any-tools.git",
+    "directory": "packages/create-tools"
+  },
+  "bugs": {
+    "url": "https://github.com/robbe-luo/any-tools/issues"
+  },
+  "homepage": "https://github.com/robbe-luo/any-tools#readme",
+  "devDependencies": {
+    "unbuild": "^2.0.0"
+  },
+  "release-it": {
+    "git": {
+      "push": false
+    },
+    "hooks": {
+      "before:init": "git fetch --prune --prune-tags origin",
+      "after:bump": "echo 更新版本成功"
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "conventionalcommits",
+        "infile": "CHANGELOG.md",
+        "header": "# Changelog",
+        "ignoreRecommendedBump": true,
+        "types": [
+          {
+            "type": "feat",
+            "section": "Features"
+          },
+          {
+            "type": "fix",
+            "section": "Bug Fixes"
+          },
+          {}
+        ]
+      }
+    }
+  }
+}
