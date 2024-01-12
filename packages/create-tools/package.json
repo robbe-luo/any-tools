@@ -19,7 +19,8 @@
   "scripts": {
     "dev": "unbuild --stub",
     "prepublish": "npm run build",
-    "build": "unbuild"
+    "build": "unbuild",
+    "release": "release-it"
   },
   "repository": {
     "type": "git",
