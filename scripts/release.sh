@@ -1,0 +1,1 @@
+npm run release --workspace=$1 && release-it
