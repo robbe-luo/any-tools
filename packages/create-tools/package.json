@@ -45,6 +45,7 @@
   },
   "release-it": {
     "git": {
+      "tagName": "${npm.name}@${version}",
       "push": false
     },
     "hooks": {

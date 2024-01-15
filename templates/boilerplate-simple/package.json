@@ -13,7 +13,8 @@
   },
   "release-it": {
     "git": {
-      "push": false
+      "push": false,
+      "tagName": "${npm.name}@${version}"
     },
     "hooks": {
       "before:init": "git fetch --prune --prune-tags origin",
