@@ -1,0 +1,39 @@
+{
+  "name": "@any-tools/boilerplate-simple",
+  "version": "0.0.0",
+  "description": "simple project",
+  "license": "MIT",
+  "scripts": {},
+  "author": "robbe.luo@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/robbe-luo/any-tools.git"
+  },
+  "release-it": {
+    "git": {
+      "push": false
+    },
+    "hooks": {
+      "before:init": "git fetch --prune --prune-tags origin",
+      "after:bump": "echo 更新版本成功"
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "conventionalcommits",
+        "infile": "CHANGELOG.md",
+        "header": "# Changelog",
+        "ignoreRecommendedBump": true,
+        "types": [
+          {
+            "type": "feat",
+            "section": "Features"
+          },
+          {
+            "type": "fix",
+            "section": "Bug Fixes"
+          }
+        ]
+      }
+    }
+  }
+}
