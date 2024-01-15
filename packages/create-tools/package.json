@@ -36,6 +36,11 @@
   },
   "homepage": "https://github.com/robbe-luo/any-tools#readme",
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/minimist": "^1.2.5",
+    "@types/prompts": "^2.4.9",
+    "execa": "^8.0.1",
+    "fs-extra": "^11.2.0",
     "unbuild": "^2.0.0"
   },
   "release-it": {
@@ -65,5 +70,12 @@
         ]
       }
     }
+  },
+  "dependencies": {
+    "axios": "^1.6.5",
+    "chalk": "^5.3.0",
+    "minimist": "^1.2.8",
+    "prompts": "^2.4.2",
+    "registry-url": "^6.0.1"
   }
 }
