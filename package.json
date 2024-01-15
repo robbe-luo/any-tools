@@ -16,7 +16,8 @@
   "homepage": "https://github.com/robbe-luo/any-tools",
   "private": true,
   "workspaces": [
-    "./packages/*"
+    "./packages/*",
+    "./templates/*"
   ],
   "devDependencies": {
     "@release-it/conventional-changelog": "^8.0.1",
