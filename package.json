@@ -6,7 +6,8 @@
     "postinstall": "simple-git-hooks",
     "format": "prettier --write --cache .",
     "lint": "eslint --cache .",
-    "release": "npm run release --workspace=@any-tools/boilerplate-simple && release-it",
+    "release": "npm run release --workspaces && release-it",
+    "release:sub": "npm run release --workspace=$0 && release-it",
     "test": "vitest"
   },
   "repository": {
