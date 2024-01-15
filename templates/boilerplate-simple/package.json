@@ -3,6 +3,7 @@
   "version": "0.1.0-beta.2",
   "description": "simple project",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "release": "release-it"
   },

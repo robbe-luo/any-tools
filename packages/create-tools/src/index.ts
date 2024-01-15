@@ -109,8 +109,49 @@ async function downloadBoilerplate(packageInfo: PackageInfo) {
   return path.join(saveDir, 'package');
 }
 
+async function askForVariable(targetDir: string, templateDir: string) {
+  let questions: any;
+
+  try {
+    console.log('=>(index.ts:117) templateDir', templateDir);
+    questions = await import(templateDir);
+    console.log('=>(index.ts:118) questions', questions);
+
+    if (typeof questions === 'function') {
+      questions = questions();
+    }
+    // use target dir name as `name` default
+    if (questions?.name?.default) {
+      questions.name.default = path.basename(targetDir);
+    }
+  } catch (err: any) {
+    if (err.code !== 'MODULE_NOT_FOUND') {
+      console.log(
+        chalk.yellow(
+          `load boilerplate config got trouble, skip and use defaults, ${err.message}`,
+        ),
+      );
+    }
+    return {};
+  }
+
+  const keys = Object.keys(questions);
+
+  return prompts(
+    keys.map((key) => {
+      const question = questions[key] as prompts.PromptObject<any>;
+      console.log('=>(index.ts:137) question', question);
+      return {
+        name: question.name,
+        type: question.type || 'text',
+      };
+    }),
+  );
+}
+
 async function processFiles(targetDir: string, templateDir: string) {
   const src = path.join(templateDir, 'boilerplate');
+  await askForVariable(targetDir, templateDir);
   console.log('=>(index.ts:104) src', src);
 }
 
