@@ -1,0 +1,17 @@
+{
+  "name": "{{name}}",
+  "version": "0.0.0",
+  "description": "{{description}}",
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=16.14.0"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "author": "{{author}}",
+  "license": "MIT"
+}

@@ -1,10 +1,12 @@
 import minimist from 'minimist';
 import prompts from 'prompts';
-import fs from 'node:fs';
+import fs from 'fs-extra';
 import path from 'node:path';
 import chalk from 'chalk';
 import registryUrl from 'registry-url';
-import axios from 'axios';
+import { request } from 'urllib';
+import { fileURLToPath } from 'node:url';
+import compressing from 'compressing';
 
 // Avoids auto conversion to number of the project name by defining that the args
 // non-associated with an option ( _ ) needs to be parsed as a string. See #4606
@@ -14,18 +16,9 @@ const argv = minimist<{
 }>(process.argv.slice(2), { string: ['_'] });
 const cwd = process.cwd();
 
-type ColorFunc = (str: string | number) => string;
-type Framework = {
+type PackageInfo = {
+  version: string;
   name: string;
-  display: string;
-  color: ColorFunc;
-  variants: FrameworkVariant[];
-};
-type FrameworkVariant = {
-  name: string;
-  display: string;
-  color: ColorFunc;
-  customCommand?: string;
 };
 
 function formatTargetDir(targetDir: string | undefined) {
@@ -37,20 +30,20 @@ function isEmpty(path: string) {
   return files.length === 0 || (files.length === 1 && files[0] === '.git');
 }
 
-function isValidPackageName(projectName: string) {
-  return /^(?:@[a-z\d\-*~][a-z\d\-*._~]*\/)?[a-z\d\-~][a-z\d\-._~]*$/.test(
-    projectName,
-  );
-}
-
-function toValidPackageName(projectName: string) {
-  return projectName
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/^[._]/, '')
-    .replace(/[^a-z\d\-~]+/g, '-');
-}
+// function isValidPackageName(projectName: string) {
+//   return /^(?:@[a-z\d\-*~][a-z\d\-*._~]*\/)?[a-z\d\-~][a-z\d\-._~]*$/.test(
+//     projectName,
+//   );
+// }
+//
+// function toValidPackageName(projectName: string) {
+//   return projectName
+//     .trim()
+//     .toLowerCase()
+//     .replace(/\s+/g, '-')
+//     .replace(/^[._]/, '')
+//     .replace(/[^a-z\d\-~]+/g, '-');
+// }
 
 function pkgFromUserAgent(userAgent: string | undefined) {
   if (!userAgent) return undefined;
@@ -62,54 +55,91 @@ function pkgFromUserAgent(userAgent: string | undefined) {
   };
 }
 
-// function emptyDir(dir: string) {
-//   if (!fs.existsSync(dir)) {
-//     return;
-//   }
-//   for (const file of fs.readdirSync(dir)) {
-//     if (file === '.git') {
-//       continue;
-//     }
-//     fs.rmSync(path.resolve(dir, file), { recursive: true, force: true });
-//   }
-// }
+function emptyDir(dir: string) {
+  if (!fs.existsSync(dir)) {
+    return;
+  }
+  for (const file of fs.readdirSync(dir)) {
+    if (file === '.git') {
+      continue;
+    }
+    fs.rmSync(path.resolve(dir, file), { recursive: true, force: true });
+  }
+}
 
-const FRAMEWORKS: Framework[] = [
-  {
-    name: '1',
-    color: (name) => name + '',
-    display: '1',
-    variants: [{ name: '1-1', color: (s) => `${s}`, display: '1-1' }],
-  },
-];
-const TEMPLATES: string[] = [];
 const defaultTargetDir = 'new-project';
 
 function getRegistryUrl() {
   return registryUrl();
 }
 
-async function searchTemplate() {
+async function getPackageDetail(packageInfo: PackageInfo) {
   const registryUrl = getRegistryUrl();
-  const result = await axios.get(
-    `${registryUrl}-/v1/search?text=@any-tools&size=100`,
+  const result = await request(
+    `${registryUrl}/${packageInfo.name}/${packageInfo.version}`,
+    {
+      method: 'GET',
+      dataType: 'json',
+    },
   );
-  console.log('=>(index.ts:95) result', result);
+  return result.data;
+}
+
+async function downloadBoilerplate(packageInfo: PackageInfo) {
+  const result = await getPackageDetail(packageInfo as unknown as PackageInfo);
+  const tgzUrl = result.dist.tarball;
+
+  // const saveDir = path.join(os.tmpdir(), 'create-any-tools-boilerplate');
+  const saveDir = path.join(
+    fileURLToPath(new URL('.', import.meta.url)),
+    'create-any-tools-boilerplate',
+  );
+  if (fs.existsSync(saveDir)) {
+    fs.rmSync(saveDir);
+  }
+
+  fs.mkdirpSync(saveDir);
+
+  const response = await request(tgzUrl, {
+    streaming: true,
+    followRedirect: true,
+  });
+  await compressing.tgz.uncompress(response.res as any, saveDir);
+
+  return path.join(saveDir, 'package');
+}
+
+async function processFiles(targetDir: string, templateDir: string) {
+  const src = path.join(templateDir, 'boilerplate');
+  console.log('=>(index.ts:104) src', src);
+}
+
+async function searchTemplate(): Promise<PackageInfo[]> {
+  const registryUrl = getRegistryUrl();
+  const result = await request(
+    `${registryUrl}-/v1/search?text=@any-tools&size=100`,
+    {
+      dataType: 'json',
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'GET',
+    },
+  );
+  return result.data.objects.map((item: any) => {
+    return {
+      name: item.package.name,
+      version: item.package.version,
+    };
+  });
 }
 
 async function init() {
   const argTargetDir = formatTargetDir(argv._[0]);
-  const argTemplate = argv.template || argv.t;
-
+  const frameworks = await searchTemplate();
   let targetDir = argTargetDir || defaultTargetDir;
-  const getProjectName = () =>
-    targetDir === '.' ? path.basename(path.resolve()) : targetDir;
 
-  await searchTemplate();
-
-  let result: prompts.Answers<
-    'projectName' | 'overwrite' | 'packageName' | 'framework' | 'variant'
-  >;
+  let result: prompts.Answers<'projectName' | 'overwrite' | 'framework'>;
   try {
     result = await prompts(
       [
@@ -160,46 +190,16 @@ async function init() {
           name: 'overwriteChecker',
         },
         {
-          type: () => (isValidPackageName(getProjectName()) ? null : 'text'),
-          name: 'packageName',
-          message: chalk.reset('Package name:'),
-          initial: () => toValidPackageName(getProjectName()),
-          validate: (dir) =>
-            isValidPackageName(dir) || 'Invalid package.json name',
-        },
-        {
-          type:
-            argTemplate && TEMPLATES.includes(argTemplate) ? null : 'select',
+          type: 'select',
           name: 'framework',
-          message:
-            typeof argTemplate === 'string' && !TEMPLATES.includes(argTemplate)
-              ? chalk.reset(
-                  `"${argTemplate}" isn't a valid template. Please choose from below: `,
-                )
-              : chalk.reset('Select a framework:'),
+          message: chalk.reset('Select a framework:'),
           initial: 0,
-          choices: FRAMEWORKS.map((framework) => {
-            const frameworkColor = framework.color;
+          choices: frameworks.map((framework) => {
             return {
-              title: frameworkColor(framework.display || framework.name),
+              title: `${framework.name}@${framework.version}`,
               value: framework,
             };
           }),
-        },
-        {
-          type: (framework: Framework) => {
-            return framework && framework.variants ? 'select' : null;
-          },
-          name: 'variant',
-          message: chalk.reset('Select a variant:'),
-          choices: (framework: Framework) =>
-            framework.variants.map((variant) => {
-              const variantColor = variant.color;
-              return {
-                title: variantColor(variant.display || variant.name),
-                value: variant.name,
-              };
-            }),
         },
       ],
       {
@@ -213,20 +213,23 @@ async function init() {
     return;
   }
 
-  const { overwrite } = result as Record<
-    'projectName' | 'overwrite' | 'packageName' | 'framework' | 'variant',
+  const { overwrite, framework } = result as Record<
+    'projectName' | 'overwrite' | 'framework',
     string
   >;
-  // const { framework, overwrite, packageName, variant } = result;
-
   const root = path.join(cwd, targetDir);
 
   if (overwrite === 'yes') {
-    // @eslint-disable @typescript-eslint/no-explicit-any
-    // emptyDir(root);
+    emptyDir(root);
   } else if (!fs.existsSync(root)) {
     fs.mkdirSync(root, { recursive: true });
   }
+
+  const templateDir = await downloadBoilerplate(
+    framework as unknown as PackageInfo,
+  );
+  const files = await processFiles(targetDir, templateDir);
+  console.log('=>(index.ts:206) xDir', files);
 
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent);
   const pkgManager = pkgInfo ? pkgInfo.name : 'npm';
