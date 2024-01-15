@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "description": "simple project",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "release": "release-it"
+  },
   "author": "robbe.luo@gmail.com",
   "repository": {
     "type": "git",
