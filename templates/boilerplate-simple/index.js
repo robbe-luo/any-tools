@@ -1,11 +1,11 @@
 export default {
   name: {
-    description: 'project name',
+    message: 'project name',
   },
   description: {
-    description: 'project description',
+    message: 'project description',
   },
   author: {
-    description: 'project author',
+    message: 'project author',
   },
 };

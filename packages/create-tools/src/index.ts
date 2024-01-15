@@ -114,7 +114,7 @@ async function askForVariable(targetDir: string, templateDir: string) {
 
   try {
     console.log('=>(index.ts:117) templateDir', templateDir);
-    questions = await import(templateDir);
+    questions = await import(`${templateDir}`);
     console.log('=>(index.ts:118) questions', questions);
 
     if (typeof questions === 'function') {

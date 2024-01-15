@@ -4,6 +4,7 @@
   "description": "simple project",
   "license": "MIT",
   "type": "module",
+  "module": "index.js",
   "scripts": {
     "release": "release-it"
   },
