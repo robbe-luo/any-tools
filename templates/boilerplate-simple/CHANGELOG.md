@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.0-beta.4](https://github.com/robbe-luo/any-tools/compare/@any-tools/boilerplate-simple@0.1.0-beta.3...${npm.name}@0.1.0-beta.4) (2024-01-15)
+
+### Features
+
+- tempalte prompts ([5d140e9](https://github.com/robbe-luo/any-tools/commit/5d140e98d0f4e11bf78f7583dde42e44426c0c71))
+
 ## [0.1.0-beta.3](https://github.com/robbe-luo/any-tools/compare/@any-tools/boilerplate-simple@0.1.0-beta.2...${npm.name}@0.1.0-beta.3) (2024-01-15)
 
 ### Features
