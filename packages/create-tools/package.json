@@ -36,7 +36,9 @@
   },
   "homepage": "https://github.com/robbe-luo/any-tools#readme",
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@types/fs-extra": "^11.0.4",
+    "@types/istextorbinary": "^2.3.4",
     "@types/minimist": "^1.2.5",
     "@types/prompts": "^2.4.9",
     "execa": "^8.0.1",
@@ -72,12 +74,16 @@
     }
   },
   "dependencies": {
-    "fs-extra": "^11.2.0",
     "chalk": "^5.3.0",
     "compressing": "^1.10.0",
+    "debug": "^4.3.4",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "istextorbinary": "^9.5.0",
     "minimist": "^1.2.8",
+    "ora": "^8.0.1",
     "prompts": "^2.4.2",
     "registry-url": "^6.0.1",
-    "urllib": "^3.22.1"
+    "urllib": "^3.22.2"
   }
 }

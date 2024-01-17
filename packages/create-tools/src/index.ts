@@ -7,6 +7,13 @@ import registryUrl from 'registry-url';
 import { request } from 'urllib';
 import { fileURLToPath } from 'node:url';
 import compressing from 'compressing';
+import glob from 'fast-glob';
+import * as istextorbinary from 'istextorbinary';
+import debug from 'debug';
+import ora from 'ora';
+
+const logger = debug('create-any-tools');
+const spinner = ora('Loading unicorns').start();
 
 // Avoids auto conversion to number of the project name by defining that the args
 // non-associated with an option ( _ ) needs to be parsed as a string. See #4606
@@ -28,31 +35,6 @@ function formatTargetDir(targetDir: string | undefined) {
 function isEmpty(path: string) {
   const files = fs.readdirSync(path);
   return files.length === 0 || (files.length === 1 && files[0] === '.git');
-}
-
-// function isValidPackageName(projectName: string) {
-//   return /^(?:@[a-z\d\-*~][a-z\d\-*._~]*\/)?[a-z\d\-~][a-z\d\-._~]*$/.test(
-//     projectName,
-//   );
-// }
-//
-// function toValidPackageName(projectName: string) {
-//   return projectName
-//     .trim()
-//     .toLowerCase()
-//     .replace(/\s+/g, '-')
-//     .replace(/^[._]/, '')
-//     .replace(/[^a-z\d\-~]+/g, '-');
-// }
-
-function pkgFromUserAgent(userAgent: string | undefined) {
-  if (!userAgent) return undefined;
-  const pkgSpec = userAgent.split(' ')[0];
-  const pkgSpecArr = pkgSpec.split('/');
-  return {
-    name: pkgSpecArr[0],
-    version: pkgSpecArr[1],
-  };
 }
 
 function emptyDir(dir: string) {
@@ -95,7 +77,7 @@ async function downloadBoilerplate(packageInfo: PackageInfo) {
     'create-any-tools-boilerplate',
   );
   if (fs.existsSync(saveDir)) {
-    fs.rmSync(saveDir);
+    fs.removeSync(saveDir);
   }
 
   fs.mkdirpSync(saveDir);
@@ -113,16 +95,16 @@ async function askForVariable(targetDir: string, templateDir: string) {
   let questions: any;
 
   try {
-    console.log('=>(index.ts:117) templateDir', templateDir);
-    questions = await import(`${templateDir}`);
-    console.log('=>(index.ts:118) questions', questions);
+    questions = await import(`${templateDir}/index.js`).then(
+      (m) => m?.default || m,
+    );
 
     if (typeof questions === 'function') {
       questions = questions();
     }
     // use target dir name as `name` default
-    if (questions?.name?.default) {
-      questions.name.default = path.basename(targetDir);
+    if (!questions.name?.initial) {
+      questions.name.initial = path.basename(targetDir);
     }
   } catch (err: any) {
     if (err.code !== 'MODULE_NOT_FOUND') {
@@ -140,19 +122,82 @@ async function askForVariable(targetDir: string, templateDir: string) {
   return prompts(
     keys.map((key) => {
       const question = questions[key] as prompts.PromptObject<any>;
-      console.log('=>(index.ts:137) question', question);
       return {
-        name: question.name,
+        ...question,
+        name: question.name || key,
         type: question.type || 'text',
+        message: question.message || '',
+        initial: question.initial,
       };
     }),
+    {
+      onCancel: () => {
+        console.log('exit');
+        process.exit(1);
+      },
+    },
   );
+}
+
+const fileMapping = {
+  gitignore: '.gitignore',
+  _gitignore: '.gitignore',
+  '_.gitignore': '.gitignore',
+  '_package.json': 'package.json',
+  '_.eslintrc': '.eslintrc',
+  '_.eslintignore': '.eslintignore',
+  '_.npmignore': '.npmignore',
+};
+
+function replaceTemplate(content: string, scope: Record<string, any>) {
+  return content
+    .toString()
+    .replace(/(\\)?{{ *(\w+) *}}/g, (block, skip, key) => {
+      if (skip) {
+        return block.substring(skip.length);
+      }
+      return scope?.[key] || block;
+    });
 }
 
 async function processFiles(targetDir: string, templateDir: string) {
   const src = path.join(templateDir, 'boilerplate');
-  await askForVariable(targetDir, templateDir);
-  console.log('=>(index.ts:104) src', src);
+  const locals = await askForVariable(targetDir, templateDir);
+  const files = glob.sync('**/*', {
+    cwd: src,
+    dot: true,
+    onlyFiles: false,
+    followSymbolicLinks: false,
+  });
+  files.forEach((file) => {
+    const { dir: dirname, base: basename } = path.parse(file);
+    const from = path.join(src, file);
+    const fileName =
+      fileMapping[basename as keyof typeof fileMapping] || basename;
+    const to = path.join(targetDir, dirname, replaceTemplate(fileName, locals));
+
+    const stats = fs.lstatSync(from);
+    if (stats.isSymbolicLink()) {
+      const target = fs.readlinkSync(from);
+      fs.symlinkSync(target, to);
+      logger('%s link to %s', to, target);
+    } else if (stats.isDirectory()) {
+      fs.mkdirpSync(to);
+    } else if (stats.isFile()) {
+      const content = fs.readFileSync(from);
+      logger('write to %s', to);
+
+      // check if content is a text file
+      // @ts-ignore
+      const result = istextorbinary.isText(from, content)
+        ? replaceTemplate(content.toString('utf8'), locals)
+        : content;
+      fs.writeFileSync(to, result);
+    } else {
+      console.log('ignore %s only support file, dir, symlink', file);
+    }
+  });
+  return files;
 }
 
 async function searchTemplate(): Promise<PackageInfo[]> {
@@ -175,9 +220,19 @@ async function searchTemplate(): Promise<PackageInfo[]> {
   });
 }
 
+function printUsage(targetDir: string) {
+  console.log(`usage:
+      - cd ${targetDir}
+      - npm install
+      - npm start
+    `);
+}
+
 async function init() {
   const argTargetDir = formatTargetDir(argv._[0]);
+  spinner.text = 'search npm template ...';
   const frameworks = await searchTemplate();
+  spinner.stop();
   let targetDir = argTargetDir || defaultTargetDir;
 
   let result: prompts.Answers<'projectName' | 'overwrite' | 'framework'>;
@@ -266,18 +321,19 @@ async function init() {
     fs.mkdirSync(root, { recursive: true });
   }
 
+  spinner.start('download npm template ...');
+
   const templateDir = await downloadBoilerplate(
     framework as unknown as PackageInfo,
   );
-  const files = await processFiles(targetDir, templateDir);
-  console.log('=>(index.ts:206) xDir', files);
+  spinner.text = `\nScaffolding project in ${root} ...`;
 
-  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent);
-  const pkgManager = pkgInfo ? pkgInfo.name : 'npm';
-  const isYarn1 = pkgManager === 'yarn' && pkgInfo?.version.startsWith('1.');
-  console.log('=>(index.ts:219) isYarn1', isYarn1);
+  spinner.stop();
+  await processFiles(targetDir, templateDir);
 
-  console.log(`\nScaffolding project in ${root}...`);
+  const cdProjectName = path.relative(cwd, root);
+
+  printUsage(cdProjectName);
 }
 
 init().catch();
